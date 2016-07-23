@@ -124,3 +124,47 @@ $KAFKA_HOME/bin/kafka-console-consumer.sh --zookeeper 172.17.0.2:2181 --topic my
 ```
 
 You should be able to see the messages from the producer.
+
+## Automation using Compose
+
+Now, we would like to automate as much as possible of the above steps. We would like to be able to scale the number of brokers seamlessly as well.
+
+Setting up a compose file for a single broker (like the above case) is a very easy task. We can just convert the manual steps into a compose file. What would be better is a compose setup which permit adding more brokers using the `docker-compose scale` command.
+
+For the system to be simple, it is best if we can configure the Kafka broker params at container start time. That is, I would prefer not to build a seperate image for each Kafka broker and would like to use the same image (`wurstmeister/kafka`) and configure it at start time.
+
+So, I opt to have the required configuration as bash commands to be run before we start the Kafka server. Specifcally, we need to ensure correct values for each of the config values in the config file. We shall do that by using the commands available from bash, namely `sed`, `hostname`, etc.
+
+So, for each config, below is our value setup:
+
+### broker.id
+Needs to be an unique integer.
+
+Note that the brokers (containers) are going to be started on a seperate network. Each container can obviously access it's own IP. So the last (least significant) 8 bits of the IP (for simplicity) would be unique to each broker (assuming reasonable IP allocation and limited number of brokers).
+
+```
+export BROKER_ID=$(hostname -i | sed 's/\([0-9]*\.\)*\([0-9]*\)/\2/')
+sed -i 's/^\(broker\.id=\).*/\1'$BROKER_ID'/' config/server.properties
+```
+
+If required, we can use more number of bits to set the broker id. But for our cases, 251 brokers should be more than what you need on a single host.
+
+### listeners
+Needs to be the container's IP. Straight-forward substitution.
+
+```
+sed -i 's|^#\(listeners=PLAINTEXT://\)\(:9092\)|\1'`hostname -i`'\2|' config/server.properties
+```
+
+### zookeeper.connect
+Zookeeper IP connection. We link the Kafka broker containers to the zookeeper container, meaning the hostname zookeeper directly resolves to the correct IP.
+
+```
+sed -i 's|^\(zookeeper.connect=\)\(localhost\)\(:2181\)|\1zookeeper\3|' config/server.properties
+```
+
+* * *
+
+Now that we have the techniques, my first idea was to unceremoniously shove them into the docker-compose file. Then, the docker-compose file would be the single source of truth. However, it seems as though a `bash -c` command does not have access to the ENV variables inside the container.
+
+So, we are taking a cleaner approach, though still not the most modular method, of putting these into a script, mounting the folder with the script onto the Kafka image containers and running the script before starting the server.
