@@ -168,3 +168,7 @@ sed -i 's|^\(zookeeper.connect=\)\(localhost\)\(:2181\)|\1zookeeper\3|' config/s
 Now that we have the techniques, my first idea was to unceremoniously shove them into the docker-compose file. Then, the docker-compose file would be the single source of truth. However, it seems as though a `bash -c` command does not have access to the ENV variables inside the container.
 
 So, we are taking a cleaner approach, though still not the most modular method, of putting these into a script, mounting the folder with the script onto the Kafka image containers and running the script before starting the server.
+
+## Cleaner automation
+
+No need to edit files! Kafka server takes command-line args to configure itself. That, means we could move from a file-edit based solution to direct passing in of values.
