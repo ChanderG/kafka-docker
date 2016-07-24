@@ -1,6 +1,6 @@
 # kafka cluster on docker
 
-This setup is to run a Kafka cluster on Docker.
+This setup is to run a Kafka cluster on Docker running on a single host first manually, then progressing to Compose.
 
 ## Images required
 
@@ -169,6 +169,14 @@ Now that we have the techniques, my first idea was to unceremoniously shove them
 
 So, we are taking a cleaner approach, though still not the most modular method, of putting these into a script, mounting the folder with the script onto the Kafka image containers and running the script before starting the server.
 
+The usuage is like before, except you can use the named containers which run the broker, attach to them and run the commands as before.
+
 ## Cleaner automation
 
 No need to edit files! Kafka server takes command-line args to configure itself. That, means we could move from a file-edit based solution to direct passing in of values.
+
+## Known Issues
+
+If you bring down the containers, using `CTRL-C` from the terminal you `up` the containers, and bring it up back again, it seems there is no guarantee of the same IP being assigned to the containers. This causes some discrepancy with Kafka server, causing it to exit. You can, `docker-compose rm` to completely remove the containers and start over again. The same is achieved when you bring the cluster down using `docker-compose down`.
+
+To produce/consume, if you use the scripts included in the Kafka bin/ folder, you need to run a container on the same network as the brokers, or alternatively directly attach to one of the brokers.
